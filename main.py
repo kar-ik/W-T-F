@@ -9,21 +9,21 @@ from scanners.xss import scan_xss
 from scanners.csrf import check_csrf
 from scanners.headers import check_headers
 from scanners.dir_bruteforce import brute_force_dirs
-from reporting import save_report, save_html_report
+from reporting import save_html_report
 
 BANNER = """\033[1;32m
 =========================================
-      __    __        __    __ 
-     |  \  /  \      |  \  /  \
-     | $$ /  $$      | $$ /  $$
-     | $$/  $$       | $$/  $$ 
-     | $$  $$        | $$  $$  
-     | $$$$$\        | $$$$$\  
-     | $$ \$$\       | $$ \$$\ 
-     | $$  \$$\      | $$  \$$\
-      \$$   \$$       \$$   \$$
-
-  🔥 Website Security Scanner v1.0 🔥  
+      ________________________________ 
+     |               |                | 
+     | $$    $$      | $$    $$       |
+     | $$   $$       | $$   $$        |
+     | $$  $$        | $$  $$         |
+     | $$$$$         | $$$$$          |
+     | $$  $$        | $$  $$         |
+     | $$   $$       | $$   $$        |
+     | $$    $$      | $$    $$       |
+     
+  🔥 Website Security Scanner v1.2 🔥  
   Automated Web Security Testing Tool  
 =========================================
 \033[0m"""
@@ -41,26 +41,28 @@ def update_tool():
     except Exception as e:
         print(f"\033[1;31m[!] Update failed: {e}\033[0m")
 
-def progress_task(task_name, func, *args):
-    """Shows a progress bar while running a task in a separate thread."""
-    print(f"\n\033[1;34m[*] Running {task_name}...\033[0m")
+def run_scans_in_parallel(scan_tasks, depth):
+    """Runs multiple security scans in parallel and prints results."""
+    threads = []
+    results = {}
 
-    result = None  
-    def run_func():
-        nonlocal result
-        result = func(*args)
+    def scan_task(name, func, url):
+        print(f"\n\033[1;34m[*] Running {name} (Depth: {depth})...\033[0m")
+        results[name] = func(url, depth)  
+        print(f"\033[1;32m[✔] {name} Completed!\033[0m")
+        print(f"\033[1;33m[Result:]\033[0m {results[name]}")  
 
-    thread = threading.Thread(target=run_func)
-    thread.start()
+    for name, func, url in scan_tasks:
+        thread = threading.Thread(target=scan_task, args=(name, func, url))
+        threads.append(thread)
+        thread.start()
 
-    with tqdm(total=100, desc=f"{task_name}", bar_format="{l_bar}{bar} {n_fmt}/{total_fmt}") as pbar:
-        while thread.is_alive():
-            time.sleep(0.5) 
-            pbar.update(10 if pbar.n < 90 else 100 - pbar.n) 
+    with tqdm(total=len(threads), desc="Running Scans", bar_format="{l_bar}{bar} {n_fmt}/{total_fmt}") as pbar:
+        for thread in threads:
+            thread.join() 
+            pbar.update(1)
 
-    thread.join()  
-    print(f"\033[1;32m[✔] {task_name} Completed!\033[0m\n")
-    return result
+    return results
 
 def main():
     print(BANNER)  
@@ -72,8 +74,11 @@ def main():
     parser.add_argument("--csrf", action="store_true", help="Check for CSRF vulnerabilities")
     parser.add_argument("--headers", action="store_true", help="Check for missing security headers")
     parser.add_argument("--brute", action="store_true", help="Bruteforce hidden directories")
-    parser.add_argument("--report", action="store_true", help="Save scan results to a report")
+    parser.add_argument("--report", action="store_true", help="Save scan results to an HTML report")
     parser.add_argument("--update", action="store_true", help="Update the tool to the latest version")
+
+    parser.add_argument("--depth", type=int, choices=[1, 2, 3], default=2,
+                        help="Set scan depth: 1 (Shallow), 2 (Medium - Default), 3 (Deep)")
 
     args = parser.parse_args()
     
@@ -87,26 +92,25 @@ def main():
         return
 
     url = args.url
-    scan_results = {"target": url, "results": {}}
+    scan_tasks = []
+    depth = args.depth  
 
     if args.sql:
-        scan_results["results"]["SQL Injection"] = progress_task("SQL Injection Scan", scan_sql_injection, url)
-
+        scan_tasks.append(("SQL Injection Scan", scan_sql_injection, url))
     if args.xss:
-        scan_results["results"]["XSS"] = progress_task("XSS Scan", scan_xss, url)
-
+        scan_tasks.append(("XSS Scan", scan_xss, url))
     if args.csrf:
-        scan_results["results"]["CSRF"] = progress_task("CSRF Check", check_csrf, url)
-
+        scan_tasks.append(("CSRF Check", check_csrf, url))
     if args.headers:
-        scan_results["results"]["Security Headers"] = progress_task("Security Headers Check", check_headers, url)
-
+        scan_tasks.append(("Security Headers Check", check_headers, url))
     if args.brute:
-        scan_results["results"]["Directory Bruteforce"] = progress_task("Directory Bruteforcing", brute_force_dirs, url)
+        scan_tasks.append(("Directory Bruteforcing", brute_force_dirs, url))
+
+    scan_results = {"target": url, "results": run_scans_in_parallel(scan_tasks, depth)}
 
     if args.report:
-        save_report(scan_results, url)
         save_html_report(scan_results, url)
 
 if __name__ == "__main__":
     main()
+
