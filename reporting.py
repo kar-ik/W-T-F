@@ -1,35 +1,19 @@
-import json
 import os
+import re
 
 REPORTS_DIR = "reports"
 
-def save_report(results, url):
-    """Save scan results to a JSON file."""
-    if not os.path.exists(REPORTS_DIR):
-        os.makedirs(REPORTS_DIR)
-
-    report_path = os.path.join(REPORTS_DIR, "results.json")
-
-    if os.path.exists(report_path):
-        with open(report_path, "r") as file:
-            try:
-                existing_data = json.load(file)
-            except json.JSONDecodeError:
-                existing_data = {}
-    else:
-        existing_data = {}
-
-    existing_data[url] = results  
-
-    with open(report_path, "w") as file:
-        json.dump(existing_data, file, indent=4)
-
-    print(f"✅ Report saved: {report_path}")
+def sanitize_filename(url):
+    """Removes special characters from a URL to use as a valid filename."""
+    return re.sub(r'\W+', '_', url)  
 
 def save_html_report(results, url):
-    """Save scan results to an HTML file."""
+    """Save scan results to an HTML file named after the target URL."""
     if not os.path.exists(REPORTS_DIR):
         os.makedirs(REPORTS_DIR)
+
+    filename = sanitize_filename(url) + ".html"
+    report_path = os.path.join(REPORTS_DIR, filename)
 
     html_content = f"""
     <html>
@@ -58,9 +42,7 @@ def save_html_report(results, url):
     </html>
     """
 
-    report_path = os.path.join(REPORTS_DIR, "report.html")
-
     with open(report_path, "w") as file:
         file.write(html_content)
 
-    print(f"✅ HTML Report saved: {report_path}")
+    print(f"HTML Report saved: {report_path}")
