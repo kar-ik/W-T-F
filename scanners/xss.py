@@ -1,7 +1,10 @@
 import subprocess
 
-def scan_xss(url):
-    print(f"[*] Scanning for XSS vulnerabilities on {url}...")
-    command = f"python3 XSStrike/xsstrike.py -u {url}"
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    return result.stdout
+def scan_xss(url, depth=2):
+    """Simulates XSS scanning based on depth level."""
+    if depth == 1:
+        return "Basic XSS Scan (Fast Mode)"
+    elif depth == 2:
+        return "Medium-Level XSS Testing"
+    elif depth == 3:
+        return "Deep XSS Testing (Slow & Comprehensive)"
