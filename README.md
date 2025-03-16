@@ -1,4 +1,4 @@
-WTF - CLI website testing tool.
+# WTF - CLI website testing tool.
 
 Running the Tool
 
