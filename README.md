@@ -1,3 +1,5 @@
+WTF - CLI website testing tool.
+
 Running the Tool
 
 Make the script executable:
